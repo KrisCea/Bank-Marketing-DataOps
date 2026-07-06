@@ -1,0 +1,2 @@
+fecha_carga,archivo_origen,tabla_destino,registros_totales,registros_exitosos,registros_fallidos,carga_exitosa
+2026-06-01 16:25:40,data/processed/02_bank_clean.csv,data/bank_marketing.db -> clientes,11162,11162,0,True

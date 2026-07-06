@@ -1,0 +1,14 @@
+REPORTE DE VALIDACION
+==================================================
+Fecha: 2026-06-01 16:23:12
+Archivo: data/processed/02_bank_clean.csv
+Registros: 11162
+Errores: 1
+Advertencias: 2
+
+ERRORES:
+  - Existen edades fuera del rango valido (0-120 anos)
+
+ADVERTENCIAS:
+  - Columna age es float64, se esperaba int64
+  - Existen registros con 'campaign' menor a 1

@@ -1,0 +1,2 @@
+fecha_validacion,archivo_validado,total_registros,errores_encontrados,advertencias_encontradas,detalle_errores,detalle_advertencias,validacion_exitosa
+2026-06-01 16:23:12,data/processed/02_bank_clean.csv,11162,1,2,['Existen edades fuera del rango valido (0-120 anos)'],"['Columna age es float64, se esperaba int64', ""Existen registros con 'campaign' menor a 1""]",False
