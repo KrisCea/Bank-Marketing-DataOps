@@ -12,20 +12,26 @@ from datetime import datetime
 
 from config import BASE_DIR, RAW_FILE
 
-PASOS = [
-    ("Ingesta", ["python", "ingest.py"]),
-    ("Limpieza", ["python", "clean_transform.py"]),
-    ("Validacion", ["python", "validate.py"]),
-    ("Feature Engineering", ["python", "feature_engineering.py"]),
-    ("Carga a SQLite", ["python", "load.py"]),
-    ("Entrenamiento XGBoost", ["python", "train_model.py"]),
-]
-
+# El pipeline se ejecuta paso a paso. Cada paso llama a un script Python
+# independiente que puede fallar sin afectar a los otros pasos.
+# Esto facilita depurar su funcionamiento y mantener una estructura modular.
 
 def run():
     src_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(src_dir)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    pasos = [
+        ("Ingesta", ["python", os.path.join(src_dir, "ingest.py")]),
+        ("Limpieza", ["python", os.path.join(src_dir, "clean_transform.py")]),
+        ("Validacion", ["python", os.path.join(src_dir, "validate.py")]),
+        ("Feature Engineering", ["python", os.path.join(src_dir, "feature_engineering.py")]),
+        ("Carga a SQLite", ["python", os.path.join(src_dir, "load.py")]),
+        ("Entrenamiento XGBoost", ["python", os.path.join(src_dir, "train_model.py")]),
+    ]
+
+    # Si GCS_BUCKET esta definida, el pipeline se ejecuta como un batch job
+    # en la nube y descarga el archivo crudo antes de comenzar.
     use_gcs = bool(os.environ.get("GCS_BUCKET"))
     if use_gcs:
         from cloud_storage import download_raw_input, upload_outputs
@@ -33,9 +39,11 @@ def run():
         download_raw_input(RAW_FILE)
 
     codigo_salida = 0
-    for nombre, comando in PASOS:
+    for nombre, comando in pasos:
         print(f"\n{'='*60}\n>>> {nombre}\n{'='*60}")
-        resultado = subprocess.run(comando, cwd=src_dir)
+        # Ejecutar cada paso desde la carpeta raiz para que los scripts
+        # relativos (data/, logs/, etc.) funcionen correctamente.
+        resultado = subprocess.run(comando, cwd=base_dir)
         if resultado.returncode != 0:
             print(f"\n[PIPELINE DETENIDO] El paso '{nombre}' fallo (codigo {resultado.returncode}).")
             codigo_salida = resultado.returncode

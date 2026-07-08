@@ -24,7 +24,8 @@ TABLE_TRAIN = "train"
 TABLE_TEST = "test"
 
 # Columna target
-TARGET_COL = "y"
+# El dataset de Bank Marketing usa 'deposit' como variable objetivo.
+TARGET_COL = "deposit"
 
 # Modelos y reportes
 MODEL_PATH = os.path.join(MODELS_DIR, "xgboost_model.json")
