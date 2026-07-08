@@ -1,87 +1,194 @@
-# bank-marketing-dataops
+# Bank Marketing DataOps
 
-## Descripcion del Proyecto
+## Descripción del proyecto
 
-Este proyecto implementa un pipeline completo de DataOps para el dataset "Bank Marketing" del caso de estudio N°2. El objetivo es procesar y preparar los datos para un modelo de Machine Learning que prediga la probabilidad de que un cliente suscriba un depósito a plazo.
+Este proyecto implementa un pipeline de DataOps para el dataset de Bank Marketing con enfoque en limpieza, validación, carga y entrenamiento de un modelo predictivo. El flujo está diseñado para ejecutarse tanto localmente como en un entorno de nube con Google Cloud Run y Cloud SQL.
 
-Mejoras respecto al código anterior:
+El pipeline cubre las siguientes etapas:
 
-Código más limpio y modular, con comentarios explicativos en cada sección
+1. Ingesta del archivo CSV crudo.
+2. Limpieza y transformación de variables.
+3. Validación estructural y semántica.
+4. Carga a una base de datos relacional.
+5. Entrenamiento de un modelo XGBoost.
 
-Validaciones más robustas adaptadas específicamente al caso Bank Marketing
+## Objetivo
 
-Manejo de valores 'unknown' mediante imputación por moda
+Preparar los datos para entrenar un modelo que prediga si un cliente suscribirá un depósito a plazo, manteniendo trazabilidad, reportes de calidad y una ejecución reproducible.
 
-Escalado de variables numéricas con StandardScaler
+## Características principales
 
-Logs detallados para trazabilidad de cada etapa
+- Pipeline modular y fácil de extender.
+- Procesamiento y limpieza de datos con imputación por moda.
+- Transformación de variables binarias y categóricas.
+- Escalado de variables numéricas.
+- Validaciones automáticas con reportes en CSV y texto.
+- Carga idempotente a SQLite o PostgreSQL.
+- Entrenamiento con XGBoost y generación de métricas.
+- Integración opcional con Google Cloud Storage para jobs batch en la nube.
 
-Reportes automáticos de validación y carga
-## Estructura del Proyecto
+## Estructura del proyecto
 
+```text
 bank-marketing-dataops/
 ├── data/
-│ ├── raw/ 
-│ ├── processed/ 
-│ └── reports/ 
+│   ├── raw/                     # Archivo fuente original
+│   ├── processed/               # Datos ingeridos, limpios y preparados
+│   └── reports/                 # Reportes de validación y carga
+├── logs/                        # Archivos de log por etapa
+├── models/                      # Modelo entrenado y metadata
 ├── src/
-│ ├── ingest.py             # Etapa 1: Ingesta de datos
-│ ├── clean_transform.py    # Etapa 2: Limpieza y transformacion
-│ ├── validate.py           # Etapa 3: Validacion estructural y semantica
-│ └── load.py               # Etapa 4: Carga a base de datos
-├── logs/ 
-├── requirements.txt 
-└── README.md 
-
+│   ├── clean_transform.py       # Limpieza y transformación
+│   ├── cloud_storage.py         # Integración opcional con GCS
+│   ├── config.py                # Configuración centralizada
+│   ├── db.py                    # Conexión a SQLite/PostgreSQL
+│   ├── ingest.py                # Ingesta del dataset
+│   ├── load.py                  # Carga a base de datos
+│   ├── run_pipeline.py          # Orquestador del pipeline
+│   ├── train_model.py           # Entrenamiento del modelo
+│   └── validate.py              # Validaciones del dataset
+├── requirements.txt
+└── README.md
+```
 
 ## Requisitos
 
-- Python 3.8 o superior
-- Dependencias listadas en requirements.txt
+- Python 3.9 o superior
+- pip actualizado
+- Dependencias indicadas en [requirements.txt](requirements.txt)
 
-## Instalacion
+## Instalación
+
+1. Crear y activar un entorno virtual:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+2. Instalar dependencias:
 
 ```bash
 pip install -r requirements.txt
+```
 
-los scripts deben ejecutarse en el siguiente orden;
+## Ejecución local
 
-1.  python src/ingest.py
-2.  python src/clean_transform.py
-3.  python src/validate.py
-4.  python src/load.py
+### Opción 1: Ejecutar todo el pipeline
 
-Descripcion de las Etapas
+```bash
+python src/run_pipeline.py
+```
 
-1. Ingesta (ingest.py)
-Copia el archivo CSV desde data/raw/ a data/processed/
+### Opción 2: Ejecutar etapa por etapa
 
-Registra informacion basica del dataset (número de registros y columnas)
+```bash
+python src/ingest.py
+python src/clean_transform.py
+python src/validate.py
+python src/load.py
+python src/train_model.py
+```
 
-2. Limpieza y Transformacion (clean_transform.py)
-Reemplaza valores 'unknown' por la moda de cada columna
+## Archivos de entrada y salida
 
-Convierte variables binarias (yes/no) a numericas (1/0)
+### Entrada esperada
 
-Aplica One-Hot Encoding a variables categoricas
+- [data/raw/02_bank.csv](data/raw/02_bank.csv)
 
-Escala variables numericas usando StandardScaler
+### Salidas principales
 
-3. Validacion (validate.py)
-Verifica valores nulos en columnas criticas
+- [data/processed/02_bank_ingested.csv](data/processed/02_bank_ingested.csv)
+- [data/processed/02_bank_clean.csv](data/processed/02_bank_clean.csv)
+- [data/reports/validation_report.csv](data/reports/validation_report.csv)
+- [data/reports/validation_report.txt](data/reports/validation_report.txt)
+- [data/reports/load_report.csv](data/reports/load_report.csv)
+- [models](models)
+- [logs](logs)
 
-Valida rangos de valores (edad, pdays, campaign)
+## Descripción de las etapas
 
-Genera reporte de errores y advertencias en data/reports/
+### 1. Ingesta
 
-4. Carga a Base de Datos (load.py)
-Conecta a base de datos SQLite
+El script [src/ingest.py](src/ingest.py) copia el archivo CSV desde la carpeta raw a processed y registra información básica del dataset.
 
-Crea tabla con estructura dinamica
+### 2. Limpieza y transformación
 
-Inserta datos con manejo de errores por fila
+El script [src/clean_transform.py](src/clean_transform.py) realiza:
 
-Genera reporte de carga en data/reports/
+- Reemplazo de valores `unknown` por la moda de cada columna.
+- Conversión de variables binarias tipo yes/no a 1/0.
+- Codificación one-hot para variables categóricas.
+- Escalado de variables numéricas con StandardScaler.
 
+### 3. Validación
 
+El script [src/validate.py](src/validate.py) verifica:
+
+- Valores nulos en columnas críticas.
+- Rangos válidos de edad, pdays y campaign.
+- Que la variable objetivo tenga únicamente valores 0 y 1.
+
+Los reportes se almacenan en [data/reports](data/reports).
+
+### 4. Carga a base de datos
+
+El script [src/load.py](src/load.py) carga los datos a una tabla en SQLite por defecto. También puede apuntar a PostgreSQL si se configura el entorno adecuado.
+
+### 5. Entrenamiento del modelo
+
+El script [src/train_model.py](src/train_model.py) entrena un modelo XGBoost y genera:
+
+- Archivo del modelo en [models](models)
+- Metadata del entrenamiento
+- Reporte con métricas y variables más importantes
+
+## Configuración de base de datos
+
+Por defecto el proyecto usa SQLite y genera el archivo [bank_marketing.db](bank_marketing.db).
+
+Si deseas usar PostgreSQL en Cloud SQL, define estas variables de entorno:
+
+```bash
+export DB_ENGINE=postgres
+export CLOUDSQL_INSTANCE=project:region:instance
+export DB_USER=postgres
+export DB_PASSWORD=your_password
+export DB_NAME=bank_marketing
+export CLOUDSQL_USE_CONNECTOR=true
+```
+
+## Uso con Google Cloud Storage
+
+El pipeline también puede ejecutarse como un job batch en la nube. Para habilitarlo, define:
+
+```bash
+export GCS_BUCKET=your-bucket-name
+export GCS_RAW_BLOB=raw/02_bank.csv
+export GCS_RUNS_PREFIX=runs
+```
+
+Con esta configuración, el pipeline descargará el archivo crudo desde GCS antes de ejecutar y subirá los artefactos generados al bucket al finalizar.
+
+## Variables importantes
+
+- [src/config.py](src/config.py): centraliza rutas, nombres de tablas y parámetros del modelo.
+- [src/db.py](src/db.py): abstrae la conexión a SQLite o PostgreSQL.
+- [src/run_pipeline.py](src/run_pipeline.py): orquesta la ejecución completa.
+
+## Solución de problemas
+
+- Si aparece un error de módulo faltante, vuelve a ejecutar:
+
+```bash
+pip install -r requirements.txt
+```
+
+- Si el archivo fuente no existe, asegúrate de que [data/raw/02_bank.csv](data/raw/02_bank.csv) esté presente.
+
+- Si una etapa falla, revisa los logs en [logs](logs) para identificar el problema.
+
+## Notas adicionales
+
+El proyecto está preparado para ser extendido con nuevas etapas de feature engineering, despliegue del modelo o integración con herramientas de monitoreo y orquestación.
 
