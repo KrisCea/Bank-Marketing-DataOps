@@ -31,14 +31,26 @@ logging.basicConfig(
 )
 
 
-def load_split_from_db(engine):
-    train_df = pd.read_sql(f'SELECT * FROM "{TABLE_TRAIN}"', engine)
-    test_df = pd.read_sql(f'SELECT * FROM "{TABLE_TEST}"', engine)
+def load_split_from_db(engine, chunk_size=10000):
+    """
+    Extrae los datos de la base de datos en lotes (chunks) para evitar 
+    saturar la memoria RAM del contenedor (OOM) con datasets grandes. (FUTURA ESCALABILIDAD)
+    """
+    def fetch_in_chunks(table_name):
+        chunks = []
+        # pd.read_sql devuelve un iterador al usar 'chunksize'
+        for chunk in pd.read_sql(f'SELECT * FROM "{table_name}"', engine, chunksize=chunk_size):
+            chunk = chunk.drop(columns=["id"], errors="ignore")
+            chunks.append(chunk)
+        
+        # Concatena todos los lotes extraídos
+        return pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
 
-    # 'id' solo existiria si se cargo con un esquema que lo agrega
-    # explicitamente; se descarta por si acaso, no es una feature.
-    train_df = train_df.drop(columns=["id"], errors="ignore")
-    test_df = test_df.drop(columns=["id"], errors="ignore")
+    logging.info(f"Extrayendo datos en lotes de {chunk_size} filas...")
+    
+    train_df = fetch_in_chunks(TABLE_TRAIN)
+    test_df = fetch_in_chunks(TABLE_TEST)
+
     return train_df, test_df
 
 
