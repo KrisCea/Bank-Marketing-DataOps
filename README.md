@@ -72,15 +72,29 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Ejecución local
+## Ejecución local (Paso a paso)
 
-### Opción 1: Ejecutar todo el pipeline
+Sigue estos pasos para ejecutar el pipeline localmente en tu máquina de desarrollo.
+
+1. Preparar el entorno
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Verificar que el archivo de entrada exista
+
+- Asegúrate de que el CSV fuente esté en [data/raw/02_bank.csv](data/raw/02_bank.csv).
+
+3. Ejecutar el pipeline completo (orquestador)
 
 ```bash
 python src/run_pipeline.py
 ```
 
-### Opción 2: Ejecutar etapa por etapa
+4. Ejecutar por etapas (control manual)
 
 ```bash
 python src/ingest.py
@@ -89,6 +103,92 @@ python src/validate.py
 python src/load.py
 python src/train_model.py
 ```
+
+5. Comprobar salidas y logs
+
+- Resultados procesados: [data/processed/02_bank_ingested.csv](data/processed/02_bank_ingested.csv) y [data/processed/02_bank_clean.csv](data/processed/02_bank_clean.csv)
+- Reportes: [data/reports/validation_report.csv](data/reports/validation_report.csv) y [data/reports/load_report.csv](data/reports/load_report.csv)
+- Logs: [logs](logs)
+
+6. (Opcional) Ejecutar dentro de Docker
+
+```bash
+docker build -t bank-marketing-pipeline:latest .
+docker run --rm -v "$PWD/data":/app/data -e DB_ENGINE=sqlite bank-marketing-pipeline:latest python src/run_pipeline.py
+```
+
+Nota: monta la carpeta `data` para persistir artefactos fuera del contenedor.
+
+## Ejecución en la nube (Google Cloud) — Paso a paso
+
+La siguiente guía despliega y ejecuta el pipeline como un job en Cloud Run y usa Cloud SQL para la base de datos.
+
+1. Prerrequisitos
+
+- Tener `gcloud` instalado y autenticado: `gcloud auth login`
+- Seleccionar el proyecto: `gcloud config set project YOUR_PROJECT_ID`
+- Habilitar APIs necesarias:
+
+```bash
+gcloud services enable run.googleapis.com sqladmin.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com storage.googleapis.com
+```
+
+2. (Opcional) Provisionar Cloud SQL
+
+- Puedes usar el script de provisión incluido: [usr/bin/env%20bash/provision_cloud_sql.sh](usr/bin/env%20bash/provision_cloud_sql.sh)
+- O crear la instancia desde la consola o `gcloud sql instances create ...` y configurar usuario/contraseña.
+
+3. Configurar variables de entorno
+
+- Define las variables necesarias para la ejecución en Cloud Run (ejemplo):
+
+```bash
+export PROJECT_ID=your-project-id
+export REGION=us-central1
+export GCS_BUCKET=your-bucket-name
+export GCS_RAW_BLOB=raw/02_bank.csv
+export DB_ENGINE=postgres
+export DB_USER=postgres
+export DB_PASSWORD=your_password
+export DB_NAME=bank_marketing
+export CLOUDSQL_INSTANCE=project:region:instance
+export CLOUDSQL_USE_CONNECTOR=true
+```
+
+4. Construir y subir la imagen del contenedor
+
+Usando Cloud Build + Container Registry (ejemplo):
+
+```bash
+gcloud builds submit --tag gcr.io/$PROJECT_ID/bank-marketing-pipeline:latest .
+```
+
+5. Crear y desplegar un Job en Cloud Run
+
+```bash
+gcloud run jobs create bank-pipeline-job \
+	--image gcr.io/$PROJECT_ID/bank-marketing-pipeline:latest \
+	--region $REGION \
+	--set-env-vars GCS_BUCKET=$GCS_BUCKET,GCS_RAW_BLOB=$GCS_RAW_BLOB,DB_ENGINE=$DB_ENGINE,DB_USER=$DB_USER,DB_PASSWORD=$DB_PASSWORD,DB_NAME=$DB_NAME,CLOUDSQL_INSTANCE=$CLOUDSQL_INSTANCE,CLOUDSQL_USE_CONNECTOR=$CLOUDSQL_USE_CONNECTOR
+
+# Ejecutar el job
+gcloud run jobs execute bank-pipeline-job --region $REGION
+```
+
+6. Despliegue usando el script incluido
+
+- Hay un helper para desplegar el job: [usr/bin/env%20bash/deploy_cloud_run_job.sh](usr/bin/env%20bash/deploy_cloud_run_job.sh). Revisa y adapta las variables antes de ejecutarlo.
+
+7. Acceso a registros y artefactos
+
+- Logs: `gcloud logs read --project=$PROJECT_ID --limit=100` o desde Cloud Console.
+- Artefactos en GCS si configuraste `GCS_BUCKET`.
+
+Consideraciones de seguridad
+
+- No dejes credenciales en texto plano en el repositorio: usa Secret Manager o variables de entorno en Cloud Run.
+- Para conectar con Cloud SQL en producción, usa el Cloud SQL Auth connector o configura una VPC con conexión privada según tu arquitectura.
+
 
 ## Archivos de entrada y salida
 

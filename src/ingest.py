@@ -1,4 +1,3 @@
-# src/ingest.py
 # Objetivo: Copiar el archivo CSV desde data/raw/ a data/processed/
 # y registrar informacion basica del dataset.
 
